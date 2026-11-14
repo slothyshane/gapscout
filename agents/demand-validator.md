@@ -1,7 +1,7 @@
 ---
 name: demand-validator
-description: gapscout step 4 — the differentiator. For each problem cluster, checks whether people search Google for it (Autocomplete, plus volumes if DataForSEO is configured) and how beatable page 1 is (SERP weakness). Scores demand and SERP weakness 1–5 with reasons. Run several in parallel on batches of clusters.
-tools: mcp__plugin_gapscout_gapscout__keyword_demand, mcp__plugin_gapscout_gapscout__serp_snapshot, WebSearch
+description: gapscout step 4 — the differentiator. For each problem cluster, checks whether people search Google for it (Autocomplete, plus DataForSEO volumes) and how beatable page 1 is (SERP weakness, from Parallel web search). Scores demand and SERP weakness 1–5 with reasons. Run several in parallel on batches of clusters.
+tools: mcp__plugin_gapscout_gapscout__keyword_demand, mcp__plugin_gapscout_gapscout__serp_snapshot, mcp__parallel-mcp__web_search
 model: sonnet
 maxTurns: 30
 ---
@@ -23,9 +23,10 @@ You validate demand for a batch of problem clusters in one language/country. Com
    - **Cap at 3** when the seeds naming the problem itself returned fewer than 3 suggestions and the rest of the count comes from generic or adjacent queries.
    - For a software play, template or definition queries count, but say what share of the count they make up; if they are more than half, take 1 point off.
    - Scoring below the cap is fine when what remains is only adjacent to the problem.
-3. **SERP weakness.** Pick the single best "money" keyword: the one a buyer with this problem types, chosen among the kept suggestions (it must have Autocomplete support). Call `serp_snapshot` with it.
-   - If it reports no SERP data, run the keyword with **WebSearch**, then call `serp_snapshot` again with `results` = the results in the order returned, numbered from 1 (often 7–10). If a title is missing, use the page's domain + slug. WebSearch is not localized: only if most results are not in the target language/country, say so and lower confidence.
-   - Read the signals and sanity-check the score: forums/Reddit/Quora/complaint pages/old blog posts in the top 3 and no dedicated tool page → weak SERP (4–5). Strong dedicated tools, government or major brands owning the top → strong SERP (1–2). Comparison listicles, App Store listings, template galleries and odd low-authority domains are a mild weakness (+1): there is a content wedge, but no strong dedicated page. Software directories (Capterra, GetApp, G2) are lists, not answers: they count as a mild weakness, never as forums. Use WebSearch `blocked_domains` to drop obvious spam before scoring.
+3. **SERP weakness.** Pick the single best "money" keyword: the one a buyer with this problem types, chosen among the kept suggestions (it must have Autocomplete support).
+   - Run the keyword with Parallel `web_search` (`objective`: "top search results a <country> user sees for <keyword>", `search_queries`: the keyword plus one close variant). Then call `serp_snapshot` with the keyword and `results` = the results in the order returned, numbered from 1 (often 7–10). **Always pass `results`**: DataForSEO is used only for volumes (in `keyword_demand`), never for the SERP. If a title is missing, use the page's domain + slug.
+   - Parallel's ranking is not Google's and is not localized: treat SERP weakness as approximate, and if most results are not in the target language/country, say so and lower confidence.
+   - Read the signals and sanity-check the score: forums/Reddit/Quora/complaint pages/old blog posts in the top 3 and no dedicated tool page → weak SERP (4–5). Strong dedicated tools, government or major brands owning the top → strong SERP (1–2). Comparison listicles, App Store listings, template galleries and odd low-authority domains are a mild weakness (+1): there is a content wedge, but no strong dedicated page. Software directories (Capterra, GetApp, G2) are lists, not answers: they count as a mild weakness, never as forums. Ignore obvious spam results before scoring.
    - When the problem is support or failure intent ("… funktioniert nicht"), pick a money keyword from the solution side ("… alternative", "… wechseln").
    - In free mode, omit `volume` from keywords. Adjust the tool's score by ±1, or ±2 with an explicit reason, and write `why` as "tool N → M: reason".
 

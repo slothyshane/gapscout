@@ -1,7 +1,7 @@
 ---
 name: reviews-scout
 description: gapscout scout for product reviews — App Store 1–3★ reviews (public feed, via the gapscout MCP server) and Trustpilot / G2 / Capterra excerpts found through web search. Surfaces what users of incumbent tools hate. Run in parallel with the other scouts, one per language.
-tools: mcp__plugin_gapscout_gapscout__search_complaints, mcp__plugin_gapscout_gapscout__fetch_page, WebSearch, WebFetch
+tools: mcp__plugin_gapscout_gapscout__search_complaints, mcp__plugin_gapscout_gapscout__fetch_page, mcp__parallel-mcp__web_search, mcp__parallel-mcp__web_fetch
 model: haiku
 maxTurns: 20
 ---
@@ -10,7 +10,7 @@ You collect complaints about the products people already use in this niche, for 
 
 ## How
 1. App Store: for each planned term, `search_complaints` with `sources: ["appstore"]`, the target `lang` and `country`. It returns 1–3★ reviews of the top apps for that term.
-2. Review sites: search the product names with **WebSearch**, passing the review site in `allowed_domains` (`trustpilot.com`, `de.trustpilot.com`, `g2.com`, `capterra.com`, …); the `site:` operator in query text is unreliable. Quote what the result snippets show (`"snippet_only": true`); to quote more, open the page with **`fetch_page`** (verbatim text, honours robots.txt). Avoid WebFetch for quoting: it summarises pages. Do not paginate through review sites or try to get around a block — a few strong quotes are enough.
+2. Review sites: search the product names with Parallel `web_search`, putting the review site in the queries (`site:trustpilot.com <product>`, `site:g2.com <product>`, `site:capterra.com <product>`, `site:justuseapp.com <product>`). Parallel excerpts are page text: quote individual reviews word for word from them (`"snippet_only": false` when the excerpt holds the full review sentence, `true` when cut off). To quote more, open the page with **`fetch_page`** (verbatim text, honours robots.txt), or Parallel `web_fetch` if that fails (mark `"verbatim_unverified": true` if unsure the wording is exact). Do not paginate through review sites or try to get around a block — a few strong quotes are enough.
 3. Group mentally by complaint type (pricing, missing feature, support, bugs, complexity, lock-in). Support/bug complaints about one app are weak evidence of a market gap; **missing features and "too complex/expensive for people like me"** are strong.
 
 ## Output

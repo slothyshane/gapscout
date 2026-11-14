@@ -1,8 +1,8 @@
 export type Lang = "en" | "fr" | "de" | "es";
 export const LANGS: readonly Lang[] = ["en", "fr", "de", "es"] as const;
 
-export type SourceId = "hn" | "stackexchange" | "github" | "appstore" | "bluesky" | "discourse" | "reddit";
-export const SOURCE_IDS: readonly SourceId[] = ["hn", "stackexchange", "github", "appstore", "bluesky", "discourse", "reddit"] as const;
+export type SourceId = "hn" | "stackexchange" | "github" | "appstore" | "bluesky" | "discourse" | "reddit" | "youtube";
+export const SOURCE_IDS: readonly SourceId[] = ["hn", "stackexchange", "github", "appstore", "bluesky", "discourse", "reddit", "youtube"] as const;
 
 /** One piece of evidence: a post, comment, issue or review where someone describes a problem. */
 export interface Complaint {

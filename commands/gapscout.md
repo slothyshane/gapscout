@@ -22,8 +22,9 @@ Launch `gapscout:query-planner` with the niche, languages, depth and country. Ke
 In a **single message**, launch all scouts at once (one Agent call each):
 - for each language: `gapscout:forums-scout` with that language's `forums` plan (forum queries + subreddits), the lang and country;
 - for each language: `gapscout:reviews-scout` with that language's `reviews` plan, the lang and country;
+- for each language: `gapscout:youtube-scout` with that language's `youtube` plan, the lang and country;
 - one `gapscout:hn-dev-scout` with the `hn_dev` plans of all languages merged (HN/GitHub are mostly English), the report language as output language.
-Depth quick: skip reviews-scout for secondary languages. Tell each scout the report language for its `pain` paraphrases.
+Depth quick: skip reviews-scout and youtube-scout for secondary languages. Tell each scout the report language for its `pain` paraphrases.
 
 ## 3. Cluster
 Launch `gapscout:clusterer` with every scout's JSON (pass them verbatim), the report language and the niche.
@@ -36,7 +37,7 @@ If several languages were requested, validate in the report language; mention in
 Merge each cluster with its validation by `id`. Launch `gapscout:skeptic` with the merged list and the niche.
 
 ## 6. Report
-Launch `gapscout:reporter` with the skeptic's `kept`, `discarded` and `notes`, the niche, the report language, and `sources_used` (the scout sources that returned evidence, e.g. ["forums", "reddit (via DataForSEO)", "hn", "stackexchange", "github", "appstore", "trustpilot"]).
+Launch `gapscout:reporter` with the skeptic's `kept`, `discarded` and `notes`, the niche, the report language, and `sources_used` (the scout sources that returned evidence, e.g. ["forums", "reddit (via Parallel)", "hn", "stackexchange", "github", "appstore", "youtube", "trustpilot"]).
 
 ## 7. Answer the user
 Show the reporter's summary table and file paths, then one short paragraph: the top opportunity and why, and what would make the next scan better. In the report language.
@@ -45,6 +46,6 @@ If fewer than 3 opportunities survived, say so plainly — a short honest report
 1. `--depth normal` or `deep`, which runs more queries per source;
 2. a narrower audience, which gives sharper evidence;
 3. `--lang fr,en`, since many founders complain in English;
-4. DataForSEO keys, which add Reddit and real volumes.
+4. A verified, funded DataForSEO account, which adds real search volumes.
 
 If a step fails or returns nothing usable, say which and continue with what you have; never fabricate evidence to fill a gap.

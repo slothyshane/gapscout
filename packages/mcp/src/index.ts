@@ -48,12 +48,12 @@ server.registerTool(
   {
     title: "Search complaints",
     description:
-      "Search public sources (Hacker News, Stack Exchange, GitHub issues, App Store 1–3★ reviews, Bluesky, Discourse forums, Reddit via DataForSEO) for posts where people describe a problem. " +
+      "Search public sources (Hacker News, Stack Exchange, GitHub issues, App Store 1–3★ reviews, Bluesky, Discourse forums, Reddit via DataForSEO, YouTube video comments — only when listed in sources, needs YOUTUBE_API_KEY) for posts where people describe a problem. " +
       "Returns items ranked by pain signal + engagement, with ids usable in get_thread. Text is truncated; open threads you want to quote.",
     inputSchema: {
       query: z.string().min(2).describe("Search query, ideally a niche + problem phrase, in the target language"),
       lang,
-      sources: z.array(z.enum(SOURCE_IDS as unknown as [string, ...string[]])).optional().describe("Default: all"),
+      sources: z.array(z.enum(SOURCE_IDS as unknown as [string, ...string[]])).optional().describe("Default: all except youtube (request youtube explicitly; it uses YouTube API quota)"),
       since_days: z.number().int().positive().optional().describe("Only items newer than N days (default: no limit)"),
       limit: z.number().int().min(1).max(100).optional().describe("Max items per source (default 15)"),
       country: z.string().length(2).optional().describe("ISO country for App Store / SERP, default from lang"),
@@ -155,7 +155,7 @@ server.registerTool(
     title: "Verify quote",
     description:
       "Check that a quote really appears on its source page. Returns exact | close | not_found | unreachable, with the matching excerpt from the page. " +
-      "Quotes from search_complaints/get_thread (HN, Stack Exchange, GitHub, App Store) are verbatim by construction; verify web/forum quotes.",
+      "Quotes from search_complaints/get_thread (HN, Stack Exchange, GitHub, App Store, YouTube) are verbatim by construction; verify web/forum quotes.",
     inputSchema: {
       checks: z.array(z.object({ url: z.string().url(), quote: z.string().min(10) })).min(1).max(30),
     },

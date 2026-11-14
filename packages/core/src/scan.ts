@@ -10,6 +10,7 @@ import { getGitHubThread, searchGitHub } from "./sources/github.js";
 import { getHNThread, searchHN } from "./sources/hn.js";
 import { searchReddit } from "./sources/reddit.js";
 import { getStackExchangeThread, searchStackExchange } from "./sources/stackexchange.js";
+import { getYouTubeThread, searchYouTube } from "./sources/youtube.js";
 import type { Complaint, KeywordDemand, Lang, SerpResult, SerpSnapshot, SourceId, SourceResult, Thread } from "./types.js";
 
 export interface SearchComplaintsInput {
@@ -46,6 +47,8 @@ export async function searchComplaints(input: SearchComplaintsInput): Promise<Se
     bluesky: () => searchBluesky(input.query, opts),
     discourse: () => searchDiscourse(input.query, { ...opts, domains: input.discourseDomains ?? [] }),
     reddit: () => searchReddit(input.query, { ...opts, subreddits: input.subreddits, country: input.country }),
+    // Not in the defaults: each search costs 100 of the 10,000 daily YouTube quota units. Ask for it explicitly.
+    youtube: () => searchYouTube(input.query, { ...opts, country: input.country }),
   };
   const settled = await Promise.allSettled(sources.map((s) => runners[s]()));
   const results = settled.map((r, i) => {
@@ -87,12 +90,14 @@ export async function getThread(id: string): Promise<Thread> {
       return getBlueskyThread(tail);
     case "dc":
       return getDiscourseThread(tail);
+    case "yt":
+      return getYouTubeThread(tail);
     case "rd":
       throw new Error("Reddit threads are read with your web fetch tool (open the thread URL), not through gapscout.");
     case "as":
       throw new Error("App Store reviews are standalone; there is no thread to fetch.");
     default:
-      throw new Error(`Unknown id prefix "${prefix}". Expected hn:, se:, gh:, bs:, dc:.`);
+      throw new Error(`Unknown id prefix "${prefix}". Expected hn:, se:, gh:, bs:, dc:, yt:.`);
   }
 }
 

@@ -7,7 +7,7 @@ import { join as join2 } from "node:path";
 import { parseArgs } from "node:util";
 
 // packages/core/src/types.ts
-var SOURCE_IDS = ["hn", "stackexchange", "github", "appstore", "bluesky", "discourse", "reddit"];
+var SOURCE_IDS = ["hn", "stackexchange", "github", "appstore", "bluesky", "discourse", "reddit", "youtube"];
 
 // packages/core/src/i18n.ts
 var EN = {
@@ -1291,6 +1291,145 @@ async function getStackExchangeThread(id) {
   };
 }
 
+// packages/core/src/sources/youtube.ts
+var API = "https://www.googleapis.com/youtube/v3";
+function hasYouTubeKey() {
+  return Boolean(process.env.YOUTUBE_API_KEY);
+}
+function headers2() {
+  return { "X-Goog-Api-Key": process.env.YOUTUBE_API_KEY ?? "" };
+}
+function apiError(e) {
+  if (e instanceof HttpError) {
+    const body = String(e.body ?? e.message);
+    if (/quotaExceeded|dailyLimitExceeded/.test(body)) return "YouTube quota exhausted for today (resets at midnight Pacific).";
+    if (/API_KEY_INVALID|keyInvalid/.test(body)) return "YOUTUBE_API_KEY is invalid.";
+    if (/accessNotConfigured|SERVICE_DISABLED/.test(body)) return "YouTube Data API v3 is not enabled for this key's Google Cloud project.";
+    if (/API_KEY_HTTP_REFERRER_BLOCKED|API_KEY_IP_ADDRESS_BLOCKED|referer/i.test(body))
+      return "YOUTUBE_API_KEY has website/IP restrictions that block server use; restrict it to the YouTube Data API only.";
+    return `YouTube API error ${e.status}.`;
+  }
+  return `YouTube API error: ${e?.message ?? e}`;
+}
+function commentText(s) {
+  return (s?.textOriginal ?? s?.textDisplay ?? "").replace(/\s+/g, " ").trim();
+}
+async function searchYouTube(query, opts) {
+  if (!hasYouTubeKey()) {
+    return {
+      source: "youtube",
+      query,
+      items: [],
+      notes: [
+        "YouTube skipped: no YOUTUBE_API_KEY. Set it (free, YouTube Data API v3 in Google Cloud) to read comments on relevant videos."
+      ]
+    };
+  }
+  const videos = Math.min(Math.max(opts.videos ?? 6, 1), 15);
+  const perVideo = Math.min(Math.max(Math.ceil((opts.limit ?? 30) / videos) * 2, 10), 100);
+  const params = new URLSearchParams({
+    part: "snippet",
+    q: query,
+    type: "video",
+    maxResults: String(videos),
+    relevanceLanguage: opts.lang,
+    order: "relevance"
+  });
+  if (opts.country) params.set("regionCode", opts.country.toUpperCase());
+  if (opts.sinceDays) params.set("publishedAfter", new Date(Date.now() - opts.sinceDays * 864e5).toISOString());
+  let search;
+  try {
+    search = await fetchJson(`${API}/search?${params}`, { headers: headers2(), ttl: 24 * 3600 });
+  } catch (e) {
+    return { source: "youtube", query, items: [], notes: [apiError(e)] };
+  }
+  const items = [];
+  const notes = [];
+  let skipped = 0;
+  let lastErr = "";
+  const found = (search.items ?? []).filter((v) => v.id?.videoId);
+  for (const v of found) {
+    const videoId = v.id.videoId;
+    const videoTitle = v.snippet?.title ?? "";
+    const channel = v.snippet?.channelTitle ?? "";
+    const cparams = new URLSearchParams({
+      part: "snippet",
+      videoId,
+      maxResults: String(perVideo),
+      order: "relevance",
+      textFormat: "plainText"
+    });
+    try {
+      const threads = await fetchJson(`${API}/commentThreads?${cparams}`, { headers: headers2(), ttl: 24 * 3600 });
+      for (const t of threads.items ?? []) {
+        const top = t.snippet?.topLevelComment;
+        const text = commentText(top?.snippet);
+        if (!text) continue;
+        const commentId = top?.id ?? t.id;
+        items.push({
+          id: `yt:${videoId}:${commentId}`,
+          source: "youtube",
+          url: `https://www.youtube.com/watch?v=${videoId}&lc=${commentId}`,
+          title: `[${channel}] ${videoTitle}`.replace(/^\[\] /, ""),
+          text,
+          author: top?.snippet?.authorDisplayName,
+          createdAt: top?.snippet?.publishedAt,
+          engagement: top?.snippet?.likeCount,
+          comments: t.snippet?.totalReplyCount
+        });
+      }
+    } catch (e) {
+      skipped++;
+      lastErr = apiError(e);
+    }
+  }
+  if (found.length && skipped === found.length) notes.push(`All comment fetches failed: ${lastErr}`);
+  else if (skipped) notes.push(`${skipped} video(s) skipped (comments disabled or unavailable).`);
+  notes.push(
+    `${found.length} video(s) searched, ${items.length} comment(s). Quotes are verbatim from the API; each comment's url opens it on YouTube. Use get_thread with the item id to read its replies.`
+  );
+  return { source: "youtube", query, items: items.slice(0, opts.limit ?? 30), notes };
+}
+async function getYouTubeThread(tail, maxReplies = 60) {
+  if (!hasYouTubeKey()) throw new Error("YouTube needs YOUTUBE_API_KEY.");
+  const [videoId, commentId] = tail.split(":");
+  if (!videoId || !commentId) throw new Error(`Bad YouTube id "yt:${tail}". Expected yt:<videoId>:<commentId>.`);
+  try {
+    const t = await fetchJson(
+      `${API}/commentThreads?${new URLSearchParams({ part: "snippet", id: commentId, textFormat: "plainText" })}`,
+      { headers: headers2(), ttl: 24 * 3600 }
+    );
+    const top = t.items?.[0]?.snippet?.topLevelComment?.snippet;
+    const replies = [];
+    let pageToken = "";
+    do {
+      const p = new URLSearchParams({ part: "snippet", parentId: commentId, maxResults: "100", textFormat: "plainText" });
+      if (pageToken) p.set("pageToken", pageToken);
+      const r = await fetchJson(`${API}/comments?${p}`, {
+        headers: headers2(),
+        ttl: 24 * 3600
+      });
+      for (const c of r.items ?? [])
+        replies.push({
+          author: c.snippet?.authorDisplayName,
+          text: commentText(c.snippet),
+          engagement: c.snippet?.likeCount,
+          createdAt: c.snippet?.publishedAt
+        });
+      pageToken = r.nextPageToken ?? "";
+    } while (pageToken && replies.length < maxReplies);
+    return {
+      id: `yt:${tail}`,
+      source: "youtube",
+      url: `https://www.youtube.com/watch?v=${videoId}&lc=${commentId}`,
+      text: commentText(top),
+      replies: replies.slice(0, maxReplies)
+    };
+  } catch (e) {
+    throw new Error(apiError(e));
+  }
+}
+
 // packages/core/src/scan.ts
 async function searchComplaints(input) {
   const defaults = ["hn", "stackexchange", "github", "appstore", "bluesky", "reddit"];
@@ -1304,7 +1443,9 @@ async function searchComplaints(input) {
     appstore: () => searchAppStore(input.query, { ...opts, country: input.country }),
     bluesky: () => searchBluesky(input.query, opts),
     discourse: () => searchDiscourse(input.query, { ...opts, domains: input.discourseDomains ?? [] }),
-    reddit: () => searchReddit(input.query, { ...opts, subreddits: input.subreddits, country: input.country })
+    reddit: () => searchReddit(input.query, { ...opts, subreddits: input.subreddits, country: input.country }),
+    // Not in the defaults: each search costs 100 of the 10,000 daily YouTube quota units. Ask for it explicitly.
+    youtube: () => searchYouTube(input.query, { ...opts, country: input.country })
   };
   const settled = await Promise.allSettled(sources.map((s) => runners[s]()));
   const results = settled.map((r, i) => {
@@ -1344,12 +1485,14 @@ async function getThread(id) {
       return getBlueskyThread(tail);
     case "dc":
       return getDiscourseThread(tail);
+    case "yt":
+      return getYouTubeThread(tail);
     case "rd":
       throw new Error("Reddit threads are read with your web fetch tool (open the thread URL), not through gapscout.");
     case "as":
       throw new Error("App Store reviews are standalone; there is no thread to fetch.");
     default:
-      throw new Error(`Unknown id prefix "${prefix}". Expected hn:, se:, gh:, bs:, dc:.`);
+      throw new Error(`Unknown id prefix "${prefix}". Expected hn:, se:, gh:, bs:, dc:, yt:.`);
   }
 }
 async function keywordDemand(input) {

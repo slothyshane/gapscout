@@ -1,6 +1,6 @@
 ---
 name: gapscout
-description: Find and validate business/product opportunities in a niche — recurring problems people complain about online (forums and communities incl. Bluesky and Discourse, Reddit via Google/DataForSEO, Hacker News, Stack Exchange, GitHub issues, app and product reviews), checked against Google search demand and SERP weakness. Use when the user wants to find a niche, validate an idea, discover pain points, do market or customer research, find SEO opportunities, or asks "what should I build". Works in English, French, German and Spanish.
+description: Find and validate business/product opportunities in a niche — recurring problems people complain about online (forums and communities incl. Bluesky and Discourse, Reddit via Parallel web search, Hacker News, Stack Exchange, GitHub issues, YouTube comments, app and product reviews), checked against Google search demand and SERP weakness. Use when the user wants to find a niche, validate an idea, discover pain points, do market or customer research, find SEO opportunities, or asks "what should I build". Works in English, French, German and Spanish.
 ---
 
 # gapscout — find problems worth building
@@ -23,9 +23,9 @@ Complaints prove pain. Google proves people look for a fix. An opportunity needs
 
 ## Non-negotiables
 - **Every claim has a verbatim quote and a URL.** Never paraphrase inside quotes, never invent evidence, never pad a report to reach 10 items.
-- **Reddit only through Google results via DataForSEO** (`site:reddit.com …`). Claude's own web search and fetch tools cannot access reddit.com, so without DataForSEO Reddit is skipped and forums carry that role. Never the Reddit API, mirrors, or anything that gets around a restriction. Same for review sites: snippets and pages the site serves normally.
+- **Web searches go through the Parallel MCP** (`web_search` / `web_fetch`), including Reddit (`site:reddit.com …` queries). Never the Reddit API, mirrors, or anything that gets around a restriction. DataForSEO is used only for Google search volumes (`keyword_demand`). Same for review sites: snippets and pages the site serves normally.
 - **Language-native.** Queries, keywords and the report are in the target language; HN/GitHub queries stay English.
 - **Free by default.** Google Autocomplete is the demand signal unless `DATAFORSEO_LOGIN`/`DATAFORSEO_PASSWORD` are set; say "Autocomplete proxy" when there are no volumes.
 
 ## Optional keys (environment)
-`GITHUB_TOKEN` (higher GitHub limits) · `STACKEXCHANGE_KEY` (10k req/day instead of 300) · `DATAFORSEO_LOGIN` + `DATAFORSEO_PASSWORD` (search volumes + SERP, from $0.0006/SERP page).
+`GITHUB_TOKEN` (higher GitHub limits) · `YOUTUBE_API_KEY` (YouTube comments, free YouTube Data API v3) · `STACKEXCHANGE_KEY` (10k req/day instead of 300) · `DATAFORSEO_LOGIN` + `DATAFORSEO_PASSWORD` (Google search volumes for the demand score).

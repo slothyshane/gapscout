@@ -29,6 +29,8 @@ In **English, French, German and Spanish** — queries, keywords and report.
 
 ## Install (Claude Code)
 
+> **This fork:** web searches (forums, review sites, Reddit via `site:reddit.com`, SERP checks) go through the [Parallel MCP](https://docs.parallel.ai/integrations/mcp/installation) (`parallel-mcp` server); DataForSEO is used only for Google search volumes; a `youtube-scout` reads YouTube comments (adapted from [marketgap_scout](https://github.com/ad1tyagupta/marketgap_scout), MIT).
+
 ```bash
 /plugin marketplace add joaquimmj/gapscout
 /plugin install gapscout@gapscout
@@ -117,6 +119,7 @@ Everything works out of the box. Keys only raise limits or add data:
 |---|---|---|
 | `GITHUB_TOKEN` | 30 GitHub searches/min instead of 10 | free |
 | `STACKEXCHANGE_KEY` | 10,000 requests/day instead of 300 ([stackapps.com](https://stackapps.com/apps/oauth/register)) | free |
+| `YOUTUBE_API_KEY` | YouTube video comments as a source (YouTube Data API v3, ~100 quota units per search of 10,000/day) | free |
 | `DATAFORSEO_LOGIN` + `DATAFORSEO_PASSWORD` | real monthly search volumes, SERP fetched for you, **Reddit** (via Google results) | pay-as-you-go, from $0.0006 per SERP page |
 
 Without DataForSEO, demand is measured with Google Autocomplete (free, no volumes — the report says "Autocomplete proxy") and the SERP comes from Claude's own web search.
